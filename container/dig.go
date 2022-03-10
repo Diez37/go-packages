@@ -1,6 +1,7 @@
 package container
 
 import (
+	"github.com/diez37/go-packages/app"
 	"github.com/diez37/go-packages/clients/cache"
 	"github.com/diez37/go-packages/clients/cache/gocache"
 	"github.com/diez37/go-packages/clients/cache/redis"
@@ -45,6 +46,7 @@ func NewDigWrapper() (Container, error) {
 	}
 
 	return container, container.Provides(
+		app.NewConfig,
 		closer.NewOsSignal,
 		configurator.NewViper,
 		log.NewConfig,
