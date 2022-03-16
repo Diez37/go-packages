@@ -45,6 +45,14 @@ func WithName(name string) Option {
 	}
 }
 
+func WithDefault(value interface{}) Option {
+	return func(param *param) *param {
+		param._defaultValue = value
+
+		return param
+	}
+}
+
 type param struct {
 	logger log.Logger
 
@@ -53,11 +61,12 @@ type param struct {
 	headerName     string
 	name           string
 
-	caster Caster
+	caster        Caster
+	_defaultValue interface{}
 }
 
 func NewParam(logger log.Logger, caster Caster, options ...Option) Middleware {
-	middleware := &param{logger: logger, caster: caster}
+	middleware := &param{logger: logger, caster: caster, _defaultValue: nil}
 
 	for _, option := range options {
 		option(middleware)
@@ -76,7 +85,7 @@ func (middleware *param) Middleware(next http.Handler) http.Handler {
 			value = chi.URLParam(request, middleware.uriParamName)
 		}
 
-		if value == "" {
+		if value == "" && middleware._defaultValue == nil {
 			http.Error(writer, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			middleware.logger.Errorf(
 				"middleware.param: header - '%s', query - '%s', uri - '%s' not found",
@@ -87,14 +96,21 @@ func (middleware *param) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		castValue, err := middleware.caster(value)
-		if err != nil {
-			http.Error(writer, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-			middleware.logger.Error(err)
-			return
+		ctx := request.Context()
+
+		if value != "" {
+			castValue, err := middleware.caster(value)
+			if err != nil {
+				http.Error(writer, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+				middleware.logger.Error(err)
+				return
+			}
+
+			ctx = context.WithValue(request.Context(), middleware.name, castValue)
+		} else {
+			ctx = context.WithValue(request.Context(), middleware.name, middleware._defaultValue)
 		}
 
-		ctx := context.WithValue(request.Context(), middleware.name, castValue)
 		next.ServeHTTP(writer, request.WithContext(ctx))
 	})
 }
