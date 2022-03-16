@@ -18,7 +18,7 @@ func (writer *loggingResponseWriter) WriteHeader(code int) {
 	writer.ResponseWriter.WriteHeader(code)
 }
 
-func HttpRequestTotalMiddleware(metrics *metrics.Metrics, informer log.Informer) Middleware {
+func HttpRequestTotalMiddleware(metrics *metrics.Metrics, informer log.Informer) MiddlewareHandler {
 	informer.Info("http.middleware: add http request total")
 
 	return func(next http.Handler) http.Handler {

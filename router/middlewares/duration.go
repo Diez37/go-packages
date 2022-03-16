@@ -7,8 +7,8 @@ import (
 	"net/http"
 )
 
-// HttpDurationMiddleware return Middleware for add information to metric on request time
-func HttpDurationMiddleware(metrics *metrics.Metrics, informer log.Informer) Middleware {
+// HttpDurationMiddleware return MiddlewareHandler for add information to metric on request time
+func HttpDurationMiddleware(metrics *metrics.Metrics, informer log.Informer) MiddlewareHandler {
 	informer.Info("http.middleware: add http duration")
 
 	return func(next http.Handler) http.Handler {
