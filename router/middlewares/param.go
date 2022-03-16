@@ -9,6 +9,18 @@ import (
 	"net/http"
 )
 
+const (
+	PageFieldName  = "page"
+	LimitFieldName = "limit"
+
+	CountHeaderName = "X-Pagination-Count"
+	PageHeaderName  = "X-Pagination-Page"
+	LimitHeaderName = "X-Pagination-Limit"
+
+	LimitDefault = uint(20)
+	PageDefault  = uint(1)
+)
+
 type Option func(param *param) *param
 
 type Caster func(string) (interface{}, error)
