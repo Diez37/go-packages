@@ -49,6 +49,14 @@ func WithHeader(name string) Option {
 	}
 }
 
+func WithCookie(name string) Option {
+	return func(param *param) *param {
+		param.cookieName = name
+
+		return param
+	}
+}
+
 func WithName(name string) Option {
 	return func(param *param) *param {
 		param.name = name
@@ -71,6 +79,7 @@ type param struct {
 	uriParamName   string
 	queryParamName string
 	headerName     string
+	cookieName     string
 	name           string
 
 	caster        Caster
@@ -89,7 +98,21 @@ func NewParam(logger log.Logger, caster Caster, options ...Option) Middleware {
 
 func (middleware *param) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		value := request.Header.Get(middleware.headerName)
+		var value string
+
+		if middleware.cookieName != "" {
+			for _, cookie := range request.Cookies() {
+				if cookie.Name == middleware.cookieName {
+					value = cookie.Value
+
+					break
+				}
+			}
+		}
+
+		if value == "" {
+			value = request.Header.Get(middleware.headerName)
+		}
 		if value == "" {
 			value = request.URL.Query().Get(middleware.queryParamName)
 		}
