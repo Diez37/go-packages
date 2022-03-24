@@ -14,6 +14,7 @@ import (
 	"github.com/diez37/go-packages/log"
 	"github.com/diez37/go-packages/metrics"
 	"github.com/diez37/go-packages/migrator"
+	"github.com/diez37/go-packages/repeater"
 	"github.com/diez37/go-packages/router"
 	"github.com/diez37/go-packages/server/http"
 	"github.com/diez37/go-packages/server/http/helpers"
@@ -79,6 +80,8 @@ func NewDigWrapper() (Container, error) {
 
 		migrator.NewConfig,
 		migrator.WithConfigurator,
+
+		repeater.New,
 	)
 }
 
