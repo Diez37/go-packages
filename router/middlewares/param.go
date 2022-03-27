@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cast"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -25,9 +26,13 @@ type Option func(param *param) *param
 
 type Caster func(string) (interface{}, error)
 
+type Getter func(request *http.Request) string
+
 func WithUri(name string) Option {
 	return func(param *param) *param {
-		param.uriParamName = name
+		param.getters = append(param.getters, func(request *http.Request) string {
+			return request.URL.Query().Get(name)
+		})
 
 		return param
 	}
@@ -35,7 +40,9 @@ func WithUri(name string) Option {
 
 func WithQuery(name string) Option {
 	return func(param *param) *param {
-		param.queryParamName = name
+		param.getters = append(param.getters, func(request *http.Request) string {
+			return chi.URLParam(request, name)
+		})
 
 		return param
 	}
@@ -43,7 +50,9 @@ func WithQuery(name string) Option {
 
 func WithHeader(name string) Option {
 	return func(param *param) *param {
-		param.headerName = name
+		param.getters = append(param.getters, func(request *http.Request) string {
+			return request.Header.Get(name)
+		})
 
 		return param
 	}
@@ -51,7 +60,15 @@ func WithHeader(name string) Option {
 
 func WithCookie(name string) Option {
 	return func(param *param) *param {
-		param.cookieName = name
+		param.getters = append(param.getters, func(request *http.Request) string {
+			for _, cookie := range request.Cookies() {
+				if cookie.Name == name {
+					return cookie.Value
+				}
+			}
+
+			return ""
+		})
 
 		return param
 	}
@@ -76,12 +93,9 @@ func WithDefault(value interface{}) Option {
 type param struct {
 	logger log.Logger
 
-	uriParamName   string
-	queryParamName string
-	headerName     string
-	cookieName     string
-	name           string
+	name string
 
+	getters       []Getter
 	caster        Caster
 	_defaultValue interface{}
 }
@@ -100,34 +114,16 @@ func (middleware *param) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		var value string
 
-		if middleware.cookieName != "" {
-			for _, cookie := range request.Cookies() {
-				if cookie.Name == middleware.cookieName {
-					value = cookie.Value
-
-					break
-				}
+		for _, getter := range middleware.getters {
+			value = getter(request)
+			if strings.TrimSpace(value) != "" {
+				break
 			}
-		}
-
-		if value == "" {
-			value = request.Header.Get(middleware.headerName)
-		}
-		if value == "" {
-			value = request.URL.Query().Get(middleware.queryParamName)
-		}
-		if value == "" {
-			value = chi.URLParam(request, middleware.uriParamName)
 		}
 
 		if value == "" && middleware._defaultValue == nil {
 			http.Error(writer, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-			middleware.logger.Errorf(
-				"middleware.param: header - '%s', query - '%s', uri - '%s' not found",
-				middleware.headerName,
-				middleware.queryParamName,
-				middleware.uriParamName,
-			)
+			middleware.logger.Errorf("middleware.param: name - '%s', not found", middleware.name)
 			return
 		}
 
