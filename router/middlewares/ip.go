@@ -45,7 +45,7 @@ func (middleware *IP) Middleware(next http.Handler) http.Handler {
 		next.ServeHTTP(
 			writer,
 			request.WithContext(
-				context.WithValue(request.Context(), middleware.name, net.ParseIP(address)),
+				context.WithValue(request.Context(), middleware.name, net.ParseIP(strings.Split(address, ":")[0])),
 			))
 	})
 }
